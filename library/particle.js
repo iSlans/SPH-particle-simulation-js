@@ -2,7 +2,7 @@ class Particle {
     position = new Vector(0, 0)
     velocity = new Vector(0, 10)
     acceleration = new Vector(0, 10)
-    damping = 0.9
+    damping = 1
 
     // constructor() { }
 

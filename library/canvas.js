@@ -47,8 +47,7 @@ class Canvas {
         context.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    drawCircle(x, y) {
-        const radius = 10
+    drawCircle(x, y, { radius, fill, color } = { radius: 10, fill: true, color: 'green' }) {
         const { context } = this
 
         context.restore()
@@ -57,7 +56,31 @@ class Canvas {
         const circle = new Path2D()
         circle.arc(x, y, radius, 0, 2 * Math.PI)
 
-        context.fill(circle)
+        fill ? context.fillStyle = color : context.strokeStyle = color
+        fill ? context.fill(circle) : context.stroke(circle)
+
+    }
+
+    drawGradientCircle(x, y, { radius, color } = { radius: 10, color: 'green' }) {
+        const { context, canvas } = this
+
+        context.restore()
+        context.save()
+
+        const grad = context.createRadialGradient(x, y, 0, x, y, radius)
+        grad.addColorStop(0, color);
+        // grad.addColorStop(0.7, "rgb(255 255 255 / 0.1)");
+        grad.addColorStop(1, "rgb(255 255 255 / 0)");
+
+
+        const circle = new Path2D()
+        circle.arc(x, y, radius * 5, 0, 2 * Math.PI)
+
+        // context.globalAlpha = 0.4
+        context.fillStyle = grad
+        // context.fill(circle)
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
 
     }
 }
