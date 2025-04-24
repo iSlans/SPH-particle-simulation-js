@@ -1,17 +1,39 @@
 // Smoothed-particle hydrodynamics
-// import { Canvas } from './library/canvas'
 
+import Timer from "./library/timer.js"
+import Vector from "./library/vector.js"
+import Canvas from "./library/canvas.js"
+import Particle from "./library/particle.js"
+import SPH from "./library/hydrodynamics.js"
 
-const maxWidth = 700
-const maxHeight = 600
+const show = {
+    neighbors: false,
+    smoothingRadius: false,
+    mouseGrid: false
+}
 
-const numParticles = 800
-const particles = [new Particle()].slice(0, 0)
+window.show = show
 
-const visualRadius = 15
+window.SPH = SPH
+window.Timer = Timer
+const maxWidth = 400
+const maxHeight = 400
+
+const numParticles = 200
+
+/** @type {Particle[]} */
+const particles = []
+
+const visualRadius = 10
 
 SPH.smoothingRadius = 80
 SPH.sampleId = numParticles / 2
+
+let pp = new Particle(200, 100)
+pp.pressureCoeff = 4
+let mousePos = new Particle(-1000, -1000)
+mousePos.density = 1
+mousePos.pressureCoeff = 10000
 
 // https://gka.github.io/chroma.js/#chroma-scale
 const gradientColor = chroma
@@ -29,7 +51,7 @@ function toCell(x, y) {
 
 function hashCell(c) {
     if (c.x < 0 || c.y < 0) return 0
-    return 1000_000 + c.x * 1000 + c.y
+    return SPH.smoothingRadius * 1_000_000 + c.x * 1000 + c.y
 }
 function cellCoordinate(c) { return [c.x * SPH.smoothingRadius, c.y * SPH.smoothingRadius, SPH.smoothingRadius] }
 
@@ -48,8 +70,8 @@ function setupParticles() {
     const spacing = 10
 
     for (let i = 0; i < numParticles; i++) {
-        let x = (i % row) * spacing + 150
-        let y = Math.floor(i / row) * spacing + 220
+        let x = (i % row) * spacing + maxWidth / 4
+        let y = Math.floor(i / row) * spacing + maxHeight / 4
         // x = Math.random() * maxWidth
         // y = Math.random() * maxHeight
 
@@ -63,11 +85,6 @@ function setupParticles() {
     }
 }
 
-let pp = new Particle(200, 100)
-pp.pressureCoeff = 4
-let mousePos = new Particle(-1000, -1000)
-mousePos.density = 10
-mousePos.pressureCoeff = 6000
 document.onmousemove = (e) => {
     let offset = canvas.canvas.getBoundingClientRect()
     mousePos.position.x = e.clientX - offset.x
@@ -83,16 +100,18 @@ const neighborsCellsHash = {}
 
 async function update() {
 
-    let sampleParticle = particles[SPH.sampleId]
+    const sampleParticle = particles[SPH.sampleId]
 
-    canvas.drawCircle(
-        // canvas.canvas.width / 2, canvas.canvas.height / 2,
-        sampleParticle.position.x, sampleParticle.position.y,
-        {
-            radius: SPH.smoothingRadius,
-            fill: false
-        }
-    )
+    if (show.smoothingRadius) {
+        canvas.drawCircle(
+            // canvas.canvas.width / 2, canvas.canvas.height / 2,
+            sampleParticle.position.x, sampleParticle.position.y,
+            {
+                radius: SPH.smoothingRadius,
+                fill: false
+            }
+        )
+    }
     // const a = particles.map(p => (
     //     (async () => {
     //         // p.density = SPH.calculateDensity(particles, p)
@@ -104,8 +123,10 @@ async function update() {
     // )
     // await Promise.all(a)
 
-    // const cell = cellCoordinate(toCell(mousePos.position.x, mousePos.position.y))
-    // canvas.drawRect(cell[0], cell[1], cell[2], cell[2])
+    if (show.mouseGrid) {
+        const cell = cellCoordinate(toCell(mousePos.position.x, mousePos.position.y))
+        canvas.drawRect(cell[0], cell[1], cell[2], cell[2])
+    }
 
     const cellTable = { '0': [] }
     particles.forEach(p => {
@@ -130,6 +151,13 @@ async function update() {
                 return cellTable[hash] || []
             })
             p.density = SPH.calculateDensity(neighbors, p)
+
+            if (show.neighbors && p === sampleParticle) {
+                neighbors.map(n => {
+                    canvas.drawCircle(n.position.x, n.position.y)
+
+                })
+            }
         })()
     )
     await Promise.all(parallel)
@@ -191,17 +219,24 @@ async function update() {
 
 }
 
-
+window.deltas = []
 let maxFrames = 1000
 async function animation(timestamp) {
-    Timer.update()
+    Timer.update(timestamp)
     canvas.clear()
-    await update()
+    update()
     window.requestAnimationFrame(animation)
-    if (maxFrames--) {
+    if (maxFrames > 0) {
+        maxFrames--
+        window.deltas.push(Timer.deltaTime)
     }
 }
 
+async function firstFrame(timestamp) {
+    Timer.init(timestamp)
+    requestAnimationFrame(animation)
+}
+
 setupParticles()
-Timer.init()
-animation()
+// animation()
+requestAnimationFrame(firstFrame)

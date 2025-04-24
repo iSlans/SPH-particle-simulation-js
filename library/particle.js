@@ -1,4 +1,6 @@
-class Particle {
+import Vector from "./vector.js"
+
+export default class Particle {
     position = new Vector(0, 0)
     velocity = new Vector(0, 0)
     acceleration = new Vector(0, 0)

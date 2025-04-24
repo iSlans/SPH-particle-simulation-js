@@ -1,9 +1,11 @@
+import Vector from "./vector.js"
+
 /**
  * SPH (Smoothed Particle Hydrodynamics) class provides methods for simulating fluid dynamics
  * using particle-based techniques. It includes kernel functions, density calculations,
  * pressure calculations, and utility methods for particle interactions.
  */
-class SPH {
+export default class SPH {
     static smoothingRadius = 0.1;
     static sampleId = 76;
 

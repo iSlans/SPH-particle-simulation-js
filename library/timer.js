@@ -1,12 +1,14 @@
-class Timer {
+export default class Timer {
     static #lastTime
     static deltaTime
-    static init() { Timer.#lastTime = Date.now() }
-    static update() {
-        // Timer.deltaTime = 1 / 20
-        const now = Date.now()
+    static init(now = Date.now()) {
+        Timer.#lastTime = now
+    }
+    static update(now = Date.now()) {
+        // const now = Date.now()
         Timer.deltaTime = (now - Timer.#lastTime) / 1000
         Timer.#lastTime = now
+        // Timer.deltaTime = 0.01
 
     }
 }

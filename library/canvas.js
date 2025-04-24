@@ -1,7 +1,4 @@
-
-
-
-class Canvas {
+export default class Canvas {
     container = null
     canvas = null
     context = null
