@@ -5,6 +5,7 @@
  */
 class SPH {
     static smoothingRadius = 0.1;
+    static sampleId = 76;
 
 
     /**
@@ -25,10 +26,10 @@ class SPH {
     }
 
     static kernelDerivative(radius, dist) {
-        // if (radius <= 0) return 0;
+        if (radius <= 0) return 0;
         if (dist >= radius) return 0;
 
-        const scale = 12 / Math.pow(radius, 4) * Math.PI;
+        const scale = 12 / (Math.pow(radius, 4) * Math.PI);
         return scale * (dist - radius);
     }
 
@@ -51,20 +52,36 @@ class SPH {
         return density
     }
 
+    static densityToPressure(density) {
+        return Math.abs(density - 2.75) * 2
+
+    }
+
     static calculatePressure(particles, sampleParticle) {
         let pressure = new Vector(0, 0);
         const mass = 1;
 
         for (const particle of particles) {
+            if (particle === sampleParticle) {
+                // debugger
+                continue
+            }
             const dist = SPH.distance(particle, sampleParticle);
-            const influence = SPH.kernelDerivative(SPH.smoothingRadius, dist);
+            const slope = SPH.kernelDerivative(SPH.smoothingRadius, dist);
 
             let direction = particle.position.subtract(sampleParticle.position).normalize();
             if (direction.length === 0) {
-                direction = new Vector(1, 1).normalize()
+                direction = new Vector(Math.random(), Math.random()).normalize()
             }
-            const force = direction.multiplyScalar(influence);
-            pressure = pressure.add(force.divideScalar(mass)).multiplyScalar(1);
+            const force = direction
+                .multiplyScalar(
+                    (SPH.densityToPressure(particle.density) +
+                        SPH.densityToPressure(sampleParticle.density)) / 2
+                )
+                .multiplyScalar(slope)
+                .multiplyScalar(particle.pressureCoeff)
+                .divideScalar(Math.abs(particle.density));
+            pressure = pressure.add(force);
         }
         return pressure
     }

@@ -1,4 +1,5 @@
 class Vector {
+    static Down = new Vector(0, 1)
     constructor(x, y) {
         this.x = x;
         this.y = y;

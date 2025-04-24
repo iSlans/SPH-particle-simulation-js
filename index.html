@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <script src="https://unpkg.com/chroma-js@3.1.2/dist/chroma.min.cjs"></script>
     <script src="./library/timer.js"></script>
     <script src="./library/vector.js"></script>
     <script src="./library/canvas.js"></script>
@@ -18,6 +19,30 @@
   </head>
   <body>
     <div id="root"></div>
+    <input
+      type="range"
+      value="100"
+      step="10"
+      min="1"
+      max="200"
+      oninput="handler(this.value)"
+    />
+    <input
+      type="range"
+      value="76"
+      step="1"
+      min="0"
+      max="196"
+      oninput="handlerSample(this.value)"
+    />
     <script src="./main.js"></script>
+    <script>
+      function handler(e) {
+        SPH.smoothingRadius = e;
+      }
+      function handlerSample(e) {
+        SPH.sampleId = e;
+      }
+    </script>
   </body>
 </html>

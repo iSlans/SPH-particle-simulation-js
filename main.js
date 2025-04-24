@@ -2,8 +2,36 @@
 // import { Canvas } from './library/canvas'
 
 
-const maxWidth = 600
-const maxHeight = 500
+const maxWidth = 700
+const maxHeight = 600
+
+const numParticles = 800
+const particles = [new Particle()].slice(0, 0)
+
+const visualRadius = 15
+
+SPH.smoothingRadius = 80
+SPH.sampleId = numParticles / 2
+
+// https://gka.github.io/chroma.js/#chroma-scale
+const gradientColor = chroma
+    .scale(['blue', 'green', 'yellow', 'orange', 'red'])
+    .mode('lrgb')
+    .domain([0, 2.5]);
+
+function toCell(x, y) {
+    let mod = new Vector(
+        Math.floor(x / SPH.smoothingRadius),
+        Math.floor(y / SPH.smoothingRadius)
+    )
+    return mod
+}
+
+function hashCell(c) {
+    if (c.x < 0 || c.y < 0) return 0
+    return 1000_000 + c.x * 1000 + c.y
+}
+function cellCoordinate(c) { return [c.x * SPH.smoothingRadius, c.y * SPH.smoothingRadius, SPH.smoothingRadius] }
 
 const canvas = new Canvas({
     boxId: "root",
@@ -13,73 +41,164 @@ const canvas = new Canvas({
     border: "1px solid black",
 });
 
-const numParticles = 200
-const particles = [new Particle()].slice(0, 0)
 
 function setupParticles() {
     const row = Math.floor(Math.sqrt(numParticles))
     const col = numParticles - 1 / row + 1
-    const spacing = 30
+    const spacing = 10
 
     for (let i = 0; i < numParticles; i++) {
-        const x = (i % row) * spacing * Math.random() * 1.2
-        const y = Math.floor(i / row) * spacing * Math.random() * 1.2
+        let x = (i % row) * spacing + 150
+        let y = Math.floor(i / row) * spacing + 220
+        // x = Math.random() * maxWidth
+        // y = Math.random() * maxHeight
 
         const p = new Particle()
-        p.position = new Vector(x + 100, y)
+        p.position = new Vector(x, y)
         p.velocity = new Vector(0, 0)
         p.damping = 1
+        // p.pressureCoeff = 0.5
 
         particles.push(p)
     }
 }
 
-SPH.smoothingRadius = 570
+let pp = new Particle(200, 100)
+pp.pressureCoeff = 4
+let mousePos = new Particle(-1000, -1000)
+mousePos.density = 10
+mousePos.pressureCoeff = 6000
+document.onmousemove = (e) => {
+    let offset = canvas.canvas.getBoundingClientRect()
+    mousePos.position.x = e.clientX - offset.x
+    mousePos.position.y = e.clientY - offset.y
+}
 
-function update() {
+const neighborsCellOffset = [
+    [-1, -1], [0, -1], [1, -1],
+    [-1, 0], [0, 0], [1, 0],
+    [-1, 1], [0, 1], [1, 1]
+]
+const neighborsCellsHash = {}
 
-    // const sample = particles[0]
-    // SPH.calculateDensity(particles, sample)
-    // canvas.drawCircle(sample.position.x, sample.position.y, SPH.smoothingRadius, false)
+async function update() {
 
-    for (const p of particles) {
-        p.density = SPH.calculateDensity(particles, p)
-        p.pressure = SPH.calculatePressure(particles, p)
-    }
-    const maxDensity = Math.max(...particles.map(p => p.density))
+    let sampleParticle = particles[SPH.sampleId]
 
-    const acceleration = new Vector(0, 300)
-    for (const p of particles) {
+    canvas.drawCircle(
+        // canvas.canvas.width / 2, canvas.canvas.height / 2,
+        sampleParticle.position.x, sampleParticle.position.y,
+        {
+            radius: SPH.smoothingRadius,
+            fill: false
+        }
+    )
+    // const a = particles.map(p => (
+    //     (async () => {
+    //         // p.density = SPH.calculateDensity(particles, p)
+    //         const dist = SPH.distance(p, sampleParticle)
+    //         if (dist < SPH.smoothingRadius) {
+    //             canvas.drawCircle(p.position.x, p.position.y)
+    //         }
+    //     })())
+    // )
+    // await Promise.all(a)
+
+    // const cell = cellCoordinate(toCell(mousePos.position.x, mousePos.position.y))
+    // canvas.drawRect(cell[0], cell[1], cell[2], cell[2])
+
+    const cellTable = { '0': [] }
+    particles.forEach(p => {
+        const cell = toCell(p.position.x, p.position.y)
+        const hash = hashCell(cell)
+        p.cellHash = hash
+
+        cellTable[p.cellHash] = cellTable[p.cellHash] ?
+            [p, ...cellTable[p.cellHash]] : [p]
+
+        if (!neighborsCellsHash[hash]) {
+            neighborsCellsHash[hash] = neighborsCellOffset.flatMap(
+                ([offx, offy]) => hashCell(cell.add(new Vector(offx, offy)))
+            )
+        }
+    })
+
+
+    let parallel = particles.map(p =>
+        (async () => {
+            const neighbors = neighborsCellsHash[p.cellHash].flatMap(hash => {
+                return cellTable[hash] || []
+            })
+            p.density = SPH.calculateDensity(neighbors, p)
+        })()
+    )
+    await Promise.all(parallel)
+
+    parallel = particles.map(p =>
+        (async () => {
+            const neighbors = neighborsCellsHash[p.cellHash].flatMap(hash => {
+                return cellTable[hash] || []
+            })
+
+            p.pressure = SPH.calculatePressure([
+                ...neighbors,
+                // ...particles,
+                mousePos
+            ], p)
+        })()
+    )
+    await Promise.all(parallel)
+
+    parallel = particles.map(p => (async () => {
         p.velocity = p.pressure
-            .multiplyScalar(80000000)
-            .multiplyScalar(Timer.deltaTime / 1000)
+            .multiplyScalar(20)
+            .divideScalar(p.density)
+            .multiplyScalar(Timer.deltaTime)
+            .add(p.velocity.multiplyScalar(0.94))
+        // .add(
+        //     Vector.Down
+        //         .multiplyScalar(100)
+        //         .multiplyScalar(Timer.deltaTime)
+        // )
 
 
-        p.move(p.velocity.multiplyScalar(Timer.deltaTime / 1000))
+        // 1 ||
+        //     canvas.drawLine(
+        //         p.position.x, p.position.y,
+        //         // p.position.x + p.velocity.x,
+        //         // p.position.y + p.velocity.y,
+        //         p.position.add(p.pressure.normalize().multiplyScalar(10)).x,
+        //         p.position.add(p.pressure.normalize().multiplyScalar(10)).y
+        //     )
+
+        const step = p.velocity.multiplyScalar(Timer.deltaTime)
+        p.move(step)
 
 
         // const opacity = (p.density / maxDensity).toFixed(2)
-        const vel = p.velocity.length
+        const vel = step.length / 8
+
         canvas.drawGradientCircle(p.position.x, p.position.y, {
-            radius: 8,
-            color: `rgb(0 0 255)`
-            // color: vel > 17 ? 'red' : vel < 9 ? 'blue': 'yellow'
+            radius: visualRadius,
+            // color: `rgb(${pickHex([255, 0 , 0], [0, 255, 100], vel)})`
+            color: `${gradientColor(vel)}`
         })
 
         p.resolveCollision(maxWidth, maxHeight)
         // canvas.drawCircle(p.position.x, p.position.y)
-    }
+    })())
+    await Promise.all(parallel)
 
 }
 
 
 let maxFrames = 1000
-function animation(timestamp) {
+async function animation(timestamp) {
     Timer.update()
     canvas.clear()
-    update()
+    await update()
+    window.requestAnimationFrame(animation)
     if (maxFrames--) {
-        window.requestAnimationFrame(animation)
     }
 }
 

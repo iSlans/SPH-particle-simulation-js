@@ -1,10 +1,12 @@
 class Particle {
     position = new Vector(0, 0)
-    velocity = new Vector(0, 10)
-    acceleration = new Vector(0, 10)
+    velocity = new Vector(0, 0)
+    acceleration = new Vector(0, 0)
     damping = 1
+    pressureCoeff = 1
+    density = 1
 
-    // constructor() { }
+    constructor(x, y) { this.position.x = x; this.position.y = y }
 
     move(step) {
         this.position = this.position.add(step)

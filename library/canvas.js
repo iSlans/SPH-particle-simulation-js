@@ -26,6 +26,7 @@ class Canvas {
 
         context.fillStyle = "rgb(10 100 40)";
         // context.fillStyle = "grey";
+        // context.translate(10, 10)
 
         context.save()
 
@@ -42,7 +43,7 @@ class Canvas {
 
         // context.fillStyle = "rgb(255 255 255 / 0.1)";
         context.fillStyle = "white";
-        context.globalAlpha = 0.1
+        context.globalAlpha = 0.4
 
         context.fillRect(0, 0, canvas.width, canvas.height);
     }
@@ -70,6 +71,7 @@ class Canvas {
         const grad = context.createRadialGradient(x, y, 0, x, y, radius)
         grad.addColorStop(0, color);
         // grad.addColorStop(0.7, "rgb(255 255 255 / 0.1)");
+        // grad.addColorStop(0.4, color);
         grad.addColorStop(1, "rgb(255 255 255 / 0)");
 
 
@@ -82,6 +84,27 @@ class Canvas {
         context.fillRect(0, 0, canvas.width, canvas.height);
 
 
+    }
+
+    drawLine(x, y, x2, y2) {
+        const { context } = this
+
+        context.restore()
+        context.save()
+
+        context.beginPath()
+        context.moveTo(x, y)
+        context.lineTo(x2, y2)
+        context.strokeStyle = 'red'
+        context.stroke()
+    }
+
+    drawRect(x, y, w, h) {
+        const { context } = this
+        context.restore()
+        context.save()
+        context.fillStyle = 'rgb(100 100 100 / 0.05)'
+        context.fillRect(x, y, w, h);
     }
 }
 
